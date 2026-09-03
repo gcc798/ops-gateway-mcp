@@ -1,0 +1,9 @@
+databases:
+  - name: dev-postgres
+    environment: dev
+    driver: postgres
+    dsn_env: AI_OPS_GATEWAY_DEV_PG_DSN
+  - name: dev-mysql
+    environment: dev
+    driver: mysql
+    dsn_env: AI_OPS_GATEWAY_DEV_MYSQL_DSN
