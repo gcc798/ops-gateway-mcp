@@ -1,7 +1,0 @@
-hosts:
-  - name: dev-linux
-    environment: dev
-    address: 192.0.2.10:22
-    user: ops
-    private_key_path: ~/.ssh/id_ed25519
-    known_hosts_path: ~/.ssh/known_hosts

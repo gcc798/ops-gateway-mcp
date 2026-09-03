@@ -1,9 +1,12 @@
 package config
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestManagerLoad(t *testing.T) {
@@ -11,13 +14,16 @@ func TestManagerLoad(t *testing.T) {
 	if e := os.WriteFile(filepath.Join(d, "gateway.yaml"), []byte("gateway:\n  listen_address: 127.0.0.1:9191\n"), 0600); e != nil {
 		t.Fatal(e)
 	}
-	if err := os.Mkdir(filepath.Join(d, "database"), 0o700); err != nil {
+	data := t.TempDir()
+	db, err := sql.Open("sqlite", filepath.Join(data, "ai-ops-gateway.db"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(d, "database", "dev.yaml"), []byte("databases:\n  - name: dev\n    environment: dev\n    driver: postgres\n    dsn_env: TEST_PG_DSN\n"), 0o600); err != nil {
+	if _, err := db.Exec(`CREATE TABLE database_resources(name TEXT PRIMARY KEY,environment TEXT NOT NULL DEFAULT '',driver TEXT NOT NULL,dsn_env TEXT NOT NULL);INSERT INTO database_resources VALUES('dev','dev','postgres','TEST_PG_DSN')`); err != nil {
 		t.Fatal(err)
 	}
-	m := &Manager{dir: d}
+	db.Close()
+	m := NewManager(Paths{Conf: d, Data: data})
 	s, e := m.Load()
 	if e != nil {
 		t.Fatal(e)

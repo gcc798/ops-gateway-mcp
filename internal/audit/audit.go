@@ -44,7 +44,7 @@ const operationSelect = `SELECT operation_id,timestamp,client,tool,environment,r
 func Open(path string) (*Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, fmt.Errorf("open audit db: %w", err)
+		return nil, fmt.Errorf("open gateway db: %w", err)
 	}
 	db.SetMaxOpenConns(1)
 	schema := `CREATE TABLE IF NOT EXISTS operations(operation_id TEXT PRIMARY KEY,timestamp TEXT NOT NULL,client TEXT,tool TEXT,environment TEXT,resource_type TEXT,resource TEXT,action TEXT,target TEXT,risk TEXT,policy_decision TEXT,policy_reason TEXT,status TEXT,duration_ms INTEGER,affected_rows INTEGER,statement_hash TEXT,error TEXT);CREATE TABLE IF NOT EXISTS pending_operations(operation_id TEXT PRIMARY KEY,resource TEXT NOT NULL,dialect TEXT NOT NULL,statement TEXT NOT NULL,statement_hash TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(operation_id) REFERENCES operations(operation_id));CREATE TABLE IF NOT EXISTS pending_actions(operation_id TEXT PRIMARY KEY,resource_type TEXT NOT NULL,resource TEXT NOT NULL,action TEXT NOT NULL,target TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(operation_id) REFERENCES operations(operation_id));`

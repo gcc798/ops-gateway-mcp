@@ -13,9 +13,9 @@ make build
 
 路径环境变量为 `AI_OPS_GATEWAY_CONF`、`AI_OPS_GATEWAY_LOGS`、`AI_OPS_GATEWAY_DATA`，默认分别为 `~/.ai-ops-gateway/conf`、`logs`、`data`。
 
-资源配置示例见 `configs/examples/`。配置只引用 DSN/密码环境变量或本地凭据文件，API、日志和 Audit 不返回 Secret。Metrics 默认为 `http://127.0.0.1:9464/metrics`。
+Database、Linux 和 Kubernetes 资源描述存储在 `AI_OPS_GATEWAY_DATA/ai-ops-gateway.db`；`gateway.yaml` 只保留应用配置。资源只引用 DSN/密码环境变量或本地凭据文件，API、日志和 Audit 不返回 Secret。Metrics 默认为 `http://127.0.0.1:9464/metrics`。
 
-本地数据库开发可选设置 `AI_OPS_GATEWAY_PG_DSN`、`AI_OPS_GATEWAY_MYSQL_DSN`；Gateway 只登记逻辑资源名，不向 API 返回 DSN。
+首次启动会自动创建资源表，示例 SQL 见 `configs/examples/resources.sql`。
 
 Codex 配置：
 

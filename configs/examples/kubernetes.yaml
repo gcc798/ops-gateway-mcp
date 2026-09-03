@@ -1,5 +1,0 @@
-clusters:
-  - name: dev-k8s
-    environment: dev
-    kubeconfig: ~/.kube/config
-    context: dev
