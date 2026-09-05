@@ -85,7 +85,3 @@ cd web && pnpm build
 ```
 
 架构、安全边界、API 和数据库说明见 [`.specs/`](.specs/)；贡献前请阅读 [`AGENTS.md`](AGENTS.md)。
-
-## 许可
-
-当前项目尚未声明开源许可证。发布到公共仓库前，请补充 LICENSE 文件和明确的许可证声明。
