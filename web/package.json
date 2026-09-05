@@ -1,1 +1,27 @@
-{"name":"ai-ops-gateway-web","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite","build":"vite build"},"dependencies":{"@vitejs/plugin-react":"latest","i18next":"^26.4.1","lucide-react":"latest","react":"latest","react-dom":"latest","react-i18next":"^17.0.13","typescript":"latest","vite":"latest"}}
+{
+  "name": "ai-ops-gateway-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "format": "prettier --write src vite.config.ts tsconfig.json package.json index.html .prettierrc.json",
+    "format:check": "prettier --check src vite.config.ts tsconfig.json package.json index.html .prettierrc.json"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "i18next": "^26.4.1",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-i18next": "^17.0.13",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "prettier": "^3.9.6"
+  }
+}

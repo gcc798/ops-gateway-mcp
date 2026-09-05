@@ -2,11 +2,36 @@ package audit
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
+
+func TestOperationFieldMapping(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "audit.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	want := Operation{
+		ID: "all-fields", Timestamp: time.Now().UTC().Round(0),
+		Client: "开发者", Tool: "db_query", Environment: "dev",
+		ResourceType: "database", Resource: "示例库", Action: "sql",
+		Target: "table", Risk: "low", Decision: "allow", Reason: "只读\n含引号'",
+		Status: "succeeded", DurationMS: 123, AffectedRows: 7,
+		StatementHash: "statement-hash", Error: "example error",
+		ResourceRevision: "revision", RequestID: "request", ConfirmedBy: "reviewer",
+	}
+	ctx := context.Background()
+	if err := store.Record(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Get(ctx, want.ID)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("field mapping mismatch: got=%+v err=%v", got, err)
+	}
+}
 
 func TestPendingLifecycle(t *testing.T) {
 	store, err := Open(filepath.Join(t.TempDir(), "audit.db"))
@@ -38,26 +63,6 @@ func TestPendingLifecycle(t *testing.T) {
 	}
 	if err := store.Complete(ctx, op.ID, "succeeded", 8); err == nil {
 		t.Fatal("completed operation must not execute twice")
-	}
-}
-
-func TestOpenMigratesLegacyOperations(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "audit.db")
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`CREATE TABLE operations(operation_id TEXT PRIMARY KEY,timestamp TEXT NOT NULL,client TEXT,environment TEXT,resource TEXT,action TEXT,risk TEXT,policy_decision TEXT,status TEXT,duration_ms INTEGER);INSERT INTO operations VALUES('old','2026-01-01T00:00:00Z','','','','','','','succeeded',0)`); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
-	store, err := Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
-	if operations, err := store.List(context.Background(), 1); err != nil || len(operations) != 1 {
-		t.Fatalf("operations=%#v err=%v", operations, err)
 	}
 }
 

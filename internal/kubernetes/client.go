@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,25 +22,62 @@ import (
 )
 
 type Client struct {
-	client kubernetes.Interface
-	config *rest.Config
+	client   kubernetes.Interface
+	config   *rest.Config
+	lastUsed time.Time
 }
 
-type Manager struct{ clusters map[string]*Client }
+type Manager struct {
+	mu       sync.Mutex
+	clusters map[string]*Client
+	resolver func(string) (*Client, error)
+}
 
-func NewManager() *Manager                         { return &Manager{clusters: make(map[string]*Client)} }
-func (m *Manager) Add(name string, c *Client)      { m.clusters[name] = c }
-func (m *Manager) Get(name string) (*Client, bool) { c, ok := m.clusters[name]; return c, ok }
-func (m *Manager) Names() []string {
-	out := make([]string, 0, len(m.clusters))
-	for n := range m.clusters {
-		out = append(out, n)
+func NewManager() *Manager { return &Manager{clusters: make(map[string]*Client)} }
+func (m *Manager) SetResolver(resolve func(string) (*Client, error)) {
+	m.mu.Lock()
+	m.resolver = resolve
+	m.mu.Unlock()
+}
+func (m *Manager) Get(name string) (*Client, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.clusters[name]; ok {
+		if time.Since(c.lastUsed) > 10*time.Minute {
+			c.Close()
+			delete(m.clusters, name)
+		} else {
+			c.lastUsed = time.Now()
+			return c, true
+		}
 	}
-	sort.Strings(out)
-	return out
+	if m.resolver != nil {
+		if c, err := m.resolver(name); err == nil {
+			c.lastUsed = time.Now()
+			m.clusters[name] = c
+			return c, true
+		}
+	}
+	return nil, false
+}
+func (c *Client) Close() {
+	if c.config == nil {
+		return
+	}
+	if transport, ok := c.config.Transport.(interface{ CloseIdleConnections() }); ok {
+		transport.CloseIdleConnections()
+	}
+}
+func (m *Manager) Remove(name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c := m.clusters[name]; c != nil {
+		c.Close()
+		delete(m.clusters, name)
+	}
 }
 
-func FromKubeconfig(path, contextName string) (*Client, error) {
+func FromKubeconfig(path, contextName string, tokens ...string) (*Client, error) {
 	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("read kubeconfig: %w", err)
 	}
@@ -53,11 +90,21 @@ func FromKubeconfig(path, contextName string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load kubeconfig: %w", err)
 	}
+	config.Timeout = 10 * time.Second
+	if len(tokens) > 0 && tokens[0] != "" {
+		config.BearerToken = tokens[0]
+		config.BearerTokenFile = ""
+		config.Username, config.Password = "", ""
+		config.CertFile, config.KeyFile = "", ""
+		config.CertData, config.KeyData = nil, nil
+		config.ExecProvider = nil
+		config.AuthProvider = nil
+	}
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("create kubernetes client: %w", err)
 	}
-	return &Client{client: client, config: config}, nil
+	return &Client{client: client, config: config, lastUsed: time.Now()}, nil
 }
 func (c *Client) Ping(ctx context.Context) error {
 	if _, err := c.client.Discovery().RESTClient().Get().AbsPath("/version").DoRaw(ctx); err != nil {

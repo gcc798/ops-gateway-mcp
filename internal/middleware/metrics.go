@@ -1,11 +1,9 @@
-package server
+package middleware
 
 import (
-	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -17,14 +15,14 @@ var (
 
 func init() { prometheus.MustRegister(httpRequests, httpDuration) }
 
-func responseStatus(c *echo.Context) int {
+func ResponseStatus(c *echo.Context) int {
 	if response, err := echo.UnwrapResponse(c.Response()); err == nil {
 		return response.Status
 	}
 	return 200
 }
 
-func metricsMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func Metrics(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		started := time.Now()
 		err := next(c)
@@ -32,22 +30,8 @@ func metricsMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if route == "" {
 			route = "unmatched"
 		}
-		status := responseStatus(c)
-		httpRequests.WithLabelValues(c.Request().Method, route, strconv.Itoa(status)).Inc()
+		httpRequests.WithLabelValues(c.Request().Method, route, strconv.Itoa(ResponseStatus(c))).Inc()
 		httpDuration.WithLabelValues(c.Request().Method, route).Observe(time.Since(started).Seconds())
 		return err
-	}
-}
-
-func requestLoggingMiddleware(logger *slog.Logger) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			requestID := uuid.NewString()
-			c.Response().Header().Set("X-Request-ID", requestID)
-			started := time.Now()
-			err := next(c)
-			logger.Info("http request", "request_id", requestID, "method", c.Request().Method, "route", c.Path(), "status", responseStatus(c), "duration_ms", time.Since(started).Milliseconds())
-			return err
-		}
 	}
 }

@@ -1,0 +1,41 @@
+export type ResourceKind = 'database' | 'linux' | 'kubernetes';
+export type Resource = {
+  name: string;
+  environment: string;
+  driver?: string;
+  address?: string;
+  user?: string;
+  context?: string;
+} & Record<string, string>;
+export type Operation = {
+  operation_id: string;
+  timestamp: string;
+  client: string;
+  tool: string;
+  environment: string;
+  resource_type: string;
+  resource: string;
+  action: string;
+  target: string;
+  risk: string;
+  decision: string;
+  status: string;
+  reason: string;
+  error?: string;
+  statement?: string;
+  expires_at?: string;
+  request_id?: string;
+  confirmed_by?: string;
+  duration_ms: number;
+  affected_rows: number;
+};
+export type List<T> = { items: T[]; total: number; page: number; page_size: number };
+export type Summary = {
+  total: number;
+  allow: number;
+  confirm: number;
+  deny: number;
+  failed: number;
+};
+export type Params = Record<string, string>;
+export type Field = { name: string; type?: string; options?: string[] };

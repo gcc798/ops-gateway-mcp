@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"path/filepath"
-	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -16,34 +15,65 @@ import (
 )
 
 type Config struct {
-	Name, Address, User, Password, PrivateKeyPath, KnownHostsPath string
-	Timeout                                                       time.Duration
+	Name, Address, User, Password, PrivateKey, KnownHostsPath string
+	Timeout                                                   time.Duration
 }
 type Client struct {
-	name    string
-	client  *ssh.Client
-	timeout time.Duration
+	name     string
+	client   *ssh.Client
+	timeout  time.Duration
+	lastUsed time.Time
 }
-type Manager struct{ hosts map[string]*Client }
+type Manager struct {
+	mu       sync.Mutex
+	hosts    map[string]*Client
+	resolver func(string) (*Client, error)
+}
 
-func NewManager() *Manager                         { return &Manager{hosts: make(map[string]*Client)} }
-func (m *Manager) Add(name string, c *Client)      { m.hosts[name] = c }
-func (m *Manager) Get(name string) (*Client, bool) { c, ok := m.hosts[name]; return c, ok }
-func (m *Manager) Names() []string {
-	out := make([]string, 0, len(m.hosts))
-	for n := range m.hosts {
-		out = append(out, n)
+func NewManager() *Manager { return &Manager{hosts: make(map[string]*Client)} }
+func (m *Manager) SetResolver(resolve func(string) (*Client, error)) {
+	m.mu.Lock()
+	m.resolver = resolve
+	m.mu.Unlock()
+}
+func (m *Manager) Get(name string) (*Client, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.hosts[name]; ok {
+		if time.Since(c.lastUsed) > 10*time.Minute {
+			_ = c.Close()
+			delete(m.hosts, name)
+		} else {
+			c.lastUsed = time.Now()
+			return c, true
+		}
 	}
-	sort.Strings(out)
-	return out
+	if m.resolver != nil {
+		if c, err := m.resolver(name); err == nil {
+			c.lastUsed = time.Now()
+			m.hosts[name] = c
+			return c, true
+		}
+	}
+	return nil, false
 }
 func (m *Manager) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for name, client := range m.hosts {
 		if err := client.Close(); err != nil {
 			return fmt.Errorf("close %s: %w", name, err)
 		}
 	}
 	return nil
+}
+func (m *Manager) Remove(name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c := m.hosts[name]; c != nil {
+		_ = c.Close()
+		delete(m.hosts, name)
+	}
 }
 func Open(c Config) (*Client, error) {
 	if c.Name == "" || c.Address == "" || c.User == "" {
@@ -53,12 +83,8 @@ func Open(c Config) (*Client, error) {
 	if c.Password != "" {
 		auth = append(auth, ssh.Password(c.Password))
 	}
-	if c.PrivateKeyPath != "" {
-		b, e := os.ReadFile(c.PrivateKeyPath)
-		if e != nil {
-			return nil, fmt.Errorf("read private key: %w", e)
-		}
-		signer, e := ssh.ParsePrivateKey(b)
+	if c.PrivateKey != "" {
+		signer, e := ssh.ParsePrivateKey([]byte(c.PrivateKey))
 		if e != nil {
 			return nil, fmt.Errorf("parse private key: %w", e)
 		}
@@ -83,15 +109,19 @@ func Open(c Config) (*Client, error) {
 	if e != nil {
 		return nil, fmt.Errorf("connect %s: %w", c.Name, e)
 	}
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 	cc, ch, reqs, e := ssh.NewClientConn(conn, c.Address, cfg)
 	if e != nil {
 		conn.Close()
 		return nil, fmt.Errorf("ssh handshake %s: %w", c.Name, e)
 	}
-	return &Client{name: c.Name, client: ssh.NewClient(cc, ch, reqs), timeout: timeout}, nil
+	_ = conn.SetDeadline(time.Time{})
+	return &Client{name: c.Name, client: ssh.NewClient(cc, ch, reqs), timeout: timeout, lastUsed: time.Now()}, nil
 }
 func (c *Client) Close() error { return c.client.Close() }
 func (c *Client) run(ctx context.Context, command string, limit int64) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	if command == "" {
 		return "", fmt.Errorf("command required")
 	}

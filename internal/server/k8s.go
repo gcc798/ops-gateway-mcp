@@ -9,6 +9,7 @@ type KubernetesHandler struct{ D *Dependencies }
 
 func (h *KubernetesHandler) Register(g *echo.Group) {
 	g.GET("/clusters", h.clusters)
+	g.GET("/clusters/:name", func(c *echo.Context) error { return h.D.resourceDetail(c, "kubernetes") })
 	g.POST("/clusters/test", h.test)
 	g.GET("/:cluster/namespaces/:namespace/pods", h.pods)
 	g.GET("/:cluster/namespaces/:namespace/pods/:pod", h.pod)
@@ -63,10 +64,7 @@ func (h *KubernetesHandler) client(c *echo.Context) (*kube.Client, error) {
 	return h.D.App.KubernetesClient(c.Param("cluster"))
 }
 func (h *KubernetesHandler) clusters(c *echo.Context) error {
-	if h.D.Kubernetes == nil {
-		return c.JSON(200, []string{})
-	}
-	return c.JSON(200, h.D.Kubernetes.Names())
+	return h.D.resourceList(c, "kubernetes")
 }
 func (h *KubernetesHandler) pods(c *echo.Context) error {
 	x, e := h.client(c)

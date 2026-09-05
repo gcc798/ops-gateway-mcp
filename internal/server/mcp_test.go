@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
@@ -34,11 +35,45 @@ func TestMCPListsTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 28 {
-		t.Fatalf("got %d tools, want 28", len(tools.Tools))
+	if len(tools.Tools) != 26 {
+		t.Fatalf("got %d tools, want 26", len(tools.Tools))
 	}
-	if _, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "db_list_connections"}); err != nil {
+	names := map[string]bool{}
+	for _, tool := range tools.Tools {
+		if tool.Name == "" || names[tool.Name] {
+			t.Fatalf("invalid tool name %q", tool.Name)
+		}
+		names[tool.Name] = true
+	}
+	if !names["db_list_tables"] || names["db_confirm_execute"] || names["ops_confirm"] {
+		t.Fatal("missing list tables or exposed confirmation")
+	}
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "db_list_connections", Arguments: map[string]any{"page": 2, "page_size": 10},
+	})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("list failed: %#v", result.Content)
+	}
+	content, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output struct {
+		Value struct {
+			Items    []json.RawMessage `json:"items"`
+			Total    int               `json:"total"`
+			Page     int               `json:"page"`
+			PageSize int               `json:"page_size"`
+		} `json:"value"`
+	}
+	if err := json.Unmarshal(content, &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.Value.Items == nil || output.Value.Total != 0 || output.Value.Page != 2 || output.Value.PageSize != 10 {
+		t.Fatalf("invalid pagination response: %s", content)
 	}
 	operations, err := audits.List(context.Background(), 10)
 	if err != nil || len(operations) != 1 || operations[0].Tool != "db_list_connections" {

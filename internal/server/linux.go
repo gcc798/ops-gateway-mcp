@@ -10,6 +10,7 @@ type LinuxHandler struct{ D *Dependencies }
 
 func (h *LinuxHandler) Register(g *echo.Group) {
 	g.GET("/hosts", h.list)
+	g.GET("/hosts/:name", func(c *echo.Context) error { return h.D.resourceDetail(c, "linux") })
 	g.POST("/hosts/test", h.test)
 	g.GET("/hosts/:name/system-info", h.system)
 	g.GET("/hosts/:name/disk-usage", h.disk)
@@ -60,10 +61,7 @@ func (h *LinuxHandler) restartService(c *echo.Context) error {
 	return c.JSON(202, result)
 }
 func (h *LinuxHandler) list(c *echo.Context) error {
-	if h.D.Linux == nil {
-		return c.JSON(200, []string{})
-	}
-	return c.JSON(200, h.D.Linux.Names())
+	return h.D.resourceList(c, "linux")
 }
 func (h *LinuxHandler) host(c *echo.Context) (*linux.Client, error) {
 	return h.D.App.LinuxClient(c.Param("name"))

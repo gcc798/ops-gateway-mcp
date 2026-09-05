@@ -6,6 +6,7 @@ type DatabaseHandler struct{ D *Dependencies }
 
 func (h *DatabaseHandler) Register(g *echo.Group) {
 	g.GET("", h.list)
+	g.GET("/:name", func(c *echo.Context) error { return h.D.resourceDetail(c, "database") })
 	g.POST("/test", h.test)
 	g.POST("/:name/ping", h.ping)
 	g.GET("/:name/tables", h.tables)
@@ -38,10 +39,7 @@ func (h *DatabaseHandler) describe(c *echo.Context) error {
 	return c.JSON(200, v)
 }
 func (h *DatabaseHandler) list(c *echo.Context) error {
-	if h.D.Databases == nil {
-		return c.JSON(200, []string{})
-	}
-	return c.JSON(200, h.D.Databases.Names())
+	return h.D.resourceList(c, "database")
 }
 func (h *DatabaseHandler) ping(c *echo.Context) error {
 	db, e := h.D.App.Database(c.Param("name"))

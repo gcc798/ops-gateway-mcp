@@ -5,11 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gcc798/ai-ops-gateway/internal/audit"
+	"github.com/gcc798/ai-ops-gateway/internal/auth"
+	"github.com/gcc798/ai-ops-gateway/internal/resources"
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -30,9 +33,6 @@ type prepareSQLInput struct {
 	Environment string `json:"environment"`
 	Name        string `json:"name"`
 	Statement   string `json:"statement"`
-}
-type confirmInput struct {
-	OperationID string `json:"operation_id"`
 }
 type kubeNamespaceInput struct {
 	Cluster   string `json:"cluster"`
@@ -76,8 +76,16 @@ type valueOutput struct {
 func newMCPHandler(d *Dependencies) http.Handler {
 	s := mcp.NewServer(&mcp.Implementation{Name: "ai-ops-gateway", Version: "v0.1.0"}, nil)
 	s.AddReceivingMiddleware(mcpAuditMiddleware(d))
-	mcp.AddTool(s, &mcp.Tool{Name: "db_list_connections", Description: "List configured logical database connections"}, func(context.Context, *mcp.CallToolRequest, any) (*mcp.CallToolResult, valueOutput, error) {
-		return nil, valueOutput{d.Databases.Names()}, nil
+	addDatabaseTools(s, d)
+	addKubernetesTools(s, d)
+	addLinuxTools(s, d)
+	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, PropagateRequestCancellation: true})
+}
+
+func addDatabaseTools(s *mcp.Server, d *Dependencies) {
+	mcp.AddTool(s, &mcp.Tool{Name: "db_list_connections", Description: "List database resources with page, page_size, name, environment and driver filters"}, func(ctx context.Context, _ *mcp.CallToolRequest, in resources.Filter) (*mcp.CallToolResult, valueOutput, error) {
+		v, err := d.App.ListResources(ctx, "database", in)
+		return nil, valueOutput{v}, err
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "db_ping", Description: "Test a logical database connection"}, func(ctx context.Context, _ *mcp.CallToolRequest, in nameInput) (*mcp.CallToolResult, valueOutput, error) {
 		db, err := d.App.Database(in.Name)
@@ -117,12 +125,12 @@ func newMCPHandler(d *Dependencies) http.Handler {
 		v, err := d.App.EvaluateSQL(ctx, in.Client, in.Environment, in.Name, in.Statement)
 		return nil, valueOutput{v}, err
 	})
-	mcp.AddTool(s, &mcp.Tool{Name: "db_confirm_execute", Description: "Execute a previously frozen pending database operation"}, func(ctx context.Context, _ *mcp.CallToolRequest, in confirmInput) (*mcp.CallToolResult, valueOutput, error) {
-		err := d.App.ConfirmSQL(ctx, in.OperationID)
-		return nil, valueOutput{"succeeded"}, err
-	})
-	mcp.AddTool(s, &mcp.Tool{Name: "k8s_list_clusters", Description: "List configured logical Kubernetes clusters"}, func(context.Context, *mcp.CallToolRequest, any) (*mcp.CallToolResult, valueOutput, error) {
-		return nil, valueOutput{d.Kubernetes.Names()}, nil
+}
+
+func addKubernetesTools(s *mcp.Server, d *Dependencies) {
+	mcp.AddTool(s, &mcp.Tool{Name: "k8s_list_clusters", Description: "List Kubernetes resources with page, page_size, name, environment and context filters"}, func(ctx context.Context, _ *mcp.CallToolRequest, in resources.Filter) (*mcp.CallToolResult, valueOutput, error) {
+		v, err := d.App.ListResources(ctx, "kubernetes", in)
+		return nil, valueOutput{v}, err
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "k8s_get_pods", Description: "List pods in a namespace"}, func(ctx context.Context, _ *mcp.CallToolRequest, in kubeNamespaceInput) (*mcp.CallToolResult, valueOutput, error) {
 		c, err := d.App.KubernetesClient(in.Cluster)
@@ -187,21 +195,15 @@ func newMCPHandler(d *Dependencies) http.Handler {
 		}
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.EmbeddedResource{Resource: &mcp.ResourceContents{URI: fmt.Sprintf("container://%s/%s/%s%s", in.Cluster, in.Namespace, in.Pod, in.Path), MIMEType: "application/octet-stream", Blob: v}}}}, nil, nil
 	})
-	mcp.AddTool(s, &mcp.Tool{Name: "linux_list_hosts", Description: "List configured logical Linux hosts"}, func(context.Context, *mcp.CallToolRequest, any) (*mcp.CallToolResult, valueOutput, error) {
-		return nil, valueOutput{d.Linux.Names()}, nil
-	})
-	addLinuxTools(s, d)
-	mcp.AddTool(s, &mcp.Tool{Name: "ops_confirm", Description: "Confirm and execute one frozen Linux or Kubernetes operation"}, func(ctx context.Context, _ *mcp.CallToolRequest, in confirmInput) (*mcp.CallToolResult, valueOutput, error) {
-		err := d.App.ConfirmAction(ctx, in.OperationID)
-		return nil, valueOutput{"succeeded"}, err
-	})
-	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, PropagateRequestCancellation: true})
 }
 
 func mcpAuditMiddleware(d *Dependencies) mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, request mcp.Request) (mcp.Result, error) {
 			started := time.Now()
+			if p, ok := request.GetParams().(*mcp.CallToolParamsRaw); ok && method == "tools/call" {
+				ctx = audit.WithTool(ctx, p.Name)
+			}
 			result, err := next(ctx, method, request)
 			if method != "tools/call" || d.Audits == nil {
 				return result, err
@@ -223,7 +225,10 @@ func mcpAuditMiddleware(d *Dependencies) mcp.Middleware {
 			} else if toolResult, ok := result.(*mcp.CallToolResult); ok && toolResult.GetError() != nil {
 				status = "failed"
 			}
-			if status == "succeeded" && (params.Name == "db_prepare_execute" || params.Name == "db_confirm_execute" || params.Name == "linux_restart_service" || params.Name == "k8s_rollout_restart" || params.Name == "ops_confirm") {
+			if status == "succeeded" && (params.Name == "db_prepare_execute" || params.Name == "linux_restart_service" || params.Name == "k8s_rollout_restart") {
+				return result, err
+			}
+			if params.Name == "db_query" || params.Name == "db_explain" {
 				return result, err
 			}
 			resourceType := "gateway"
@@ -237,13 +242,37 @@ func mcpAuditMiddleware(d *Dependencies) mcp.Middleware {
 				sum := sha256.Sum256([]byte(statement))
 				statementHash = hex.EncodeToString(sum[:])
 			}
-			_ = d.Audits.Record(ctx, audit.Operation{ID: uuid.NewString(), Client: value("client"), Tool: params.Name, Environment: value("environment"), ResourceType: resourceType, Resource: resource, Action: params.Name, Status: status, Timestamp: started, Risk: "low", Decision: "allow", DurationMS: time.Since(started).Milliseconds(), StatementHash: statementHash})
+			environment := ""
+			if resource != "" && d.App.Resources != nil {
+				if r, e := d.App.Resource(ctx, resourceType, resource); e == nil {
+					environment = r.Environment
+				}
+			}
+			decision := "allow"
+			if status == "failed" {
+				decision = ""
+			}
+			auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			if auditErr := d.Audits.Record(auditCtx, audit.Operation{ID: uuid.NewString(), Client: auth.Identity(ctx), RequestID: audit.RequestID(ctx), Tool: params.Name, Environment: environment, ResourceType: resourceType, Resource: resource, Action: params.Name, Status: status, Timestamp: started, Risk: "low", Decision: decision, DurationMS: time.Since(started).Milliseconds(), StatementHash: statementHash}); auditErr != nil {
+				return nil, errors.New("audit recording failed")
+			}
+			if err != nil {
+				return nil, errors.New("tool operation failed")
+			}
+			if status == "failed" {
+				return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "tool operation failed"}}}, nil
+			}
 			return result, err
 		}
 	}
 }
 
 func addLinuxTools(s *mcp.Server, d *Dependencies) {
+	mcp.AddTool(s, &mcp.Tool{Name: "linux_list_hosts", Description: "List Linux resources with page, page_size, name, environment, address and user filters"}, func(ctx context.Context, _ *mcp.CallToolRequest, in resources.Filter) (*mcp.CallToolResult, valueOutput, error) {
+		v, err := d.App.ListResources(ctx, "linux", in)
+		return nil, valueOutput{v}, err
+	})
 	add := func(name, description string, run func(context.Context, nameInput) (string, error)) {
 		mcp.AddTool(s, &mcp.Tool{Name: name, Description: description}, func(ctx context.Context, _ *mcp.CallToolRequest, in nameInput) (*mcp.CallToolResult, valueOutput, error) {
 			v, err := run(ctx, in)

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -21,6 +21,7 @@ type Config struct {
 type Adapter struct {
 	name, driver string
 	db           *sql.DB
+	lastUsed     atomic.Int64
 }
 
 const (
@@ -37,9 +38,17 @@ type Column struct {
 type Manager struct {
 	mu       sync.RWMutex
 	adapters map[string]*Adapter
+	resolver func(string) (*Adapter, error)
 }
 
+const idleTimeout = 10 * time.Minute
+
 func NewManager() *Manager { return &Manager{adapters: make(map[string]*Adapter)} }
+func (m *Manager) SetResolver(resolve func(string) (*Adapter, error)) {
+	m.mu.Lock()
+	m.resolver = resolve
+	m.mu.Unlock()
+}
 func (m *Manager) Add(a *Adapter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -47,23 +56,29 @@ func (m *Manager) Add(a *Adapter) error {
 		return fmt.Errorf("database %q already exists", a.name)
 	}
 	m.adapters[a.name] = a
+	a.lastUsed.Store(time.Now().UnixNano())
 	return nil
 }
 func (m *Manager) Get(name string) (*Adapter, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	a, ok := m.adapters[name]
-	return a, ok
-}
-func (m *Manager) Names() []string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	names := make([]string, 0, len(m.adapters))
-	for name := range m.adapters {
-		names = append(names, name)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if a, ok := m.adapters[name]; ok {
+		if time.Since(time.Unix(0, a.lastUsed.Load())) > idleTimeout {
+			_ = a.Close()
+			delete(m.adapters, name)
+		} else {
+			a.lastUsed.Store(time.Now().UnixNano())
+			return a, true
+		}
 	}
-	sort.Strings(names)
-	return names
+	if m.resolver != nil {
+		if a, err := m.resolver(name); err == nil {
+			m.adapters[name] = a
+			a.lastUsed.Store(time.Now().UnixNano())
+			return a, true
+		}
+	}
+	return nil, false
 }
 func (m *Manager) Close() error {
 	m.mu.Lock()
@@ -74,6 +89,14 @@ func (m *Manager) Close() error {
 		}
 	}
 	return nil
+}
+func (m *Manager) Remove(name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c := m.adapters[name]; c != nil {
+		_ = c.Close()
+		delete(m.adapters, name)
+	}
 }
 
 func Open(c Config) (*Adapter, error) {

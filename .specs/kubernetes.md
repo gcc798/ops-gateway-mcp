@@ -2,6 +2,8 @@
 
 使用官方 `client-go`，不调用 `kubectl`。Gateway 管理 kubeconfig、context、API server、凭据和 namespace 约束，Agent 只引用逻辑 cluster。
 
+集群配置支持后端分页与名称、环境、context 筛选，已认证内部用户可查看完整配置及明文 Token。配置 Token 非空时覆盖 kubeconfig 认证（移除原有用户密码、证书和 exec 认证），客户端请求超时为 10 秒。配置变更或删除后，下次访问会失效旧客户端缓存。
+
 Tool：list_clusters、get_pods/pod、logs、get_deployments/deployment、get_services、rollout_restart。读操作 ALLOW，rollout restart CONFIRM，prod 更严格；不提供 exec、apply、delete、任意 patch。
 
 当前已实现 client-go 的集群注册、Pod/Deployment 列表与详情、Service 列表、Pod 日志读取；rollout restart 生成冻结确认单，确认后只 patch Deployment Pod template 的 restart annotation。任意 exec/apply/delete/patch 仍未开放。
