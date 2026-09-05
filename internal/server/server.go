@@ -2,14 +2,14 @@ package server
 
 import (
 	"embed"
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
-	"github.com/gcc798/ai-ops-gateway/internal/middleware"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
-	"github.com/gcc798/ai-ops-gateway/internal/service"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
+	"github.com/gcc798/ops-gateway-mcp/internal/middleware"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/service"
 	"github.com/labstack/echo/v5"
 	"io/fs"
 	"log/slog"
@@ -80,6 +80,6 @@ func (d *Dependencies) login(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
 func (d *Dependencies) info(c *echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"name": "ai-ops-gateway", "version": "0.1.0"})
+	return c.JSON(http.StatusOK, map[string]string{"name": "ops-gateway-mcp", "version": "0.1.0"})
 }
 func (d *Dependencies) paths(c *echo.Context) error { return c.JSON(http.StatusOK, d.Paths) }

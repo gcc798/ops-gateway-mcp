@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -74,7 +74,7 @@ type valueOutput struct {
 }
 
 func newMCPHandler(d *Dependencies) http.Handler {
-	s := mcp.NewServer(&mcp.Implementation{Name: "ai-ops-gateway", Version: "v0.1.0"}, nil)
+	s := mcp.NewServer(&mcp.Implementation{Name: "ops-gateway-mcp", Version: "v0.1.0"}, nil)
 	s.AddReceivingMiddleware(mcpAuditMiddleware(d))
 	addDatabaseTools(s, d)
 	addKubernetesTools(s, d)

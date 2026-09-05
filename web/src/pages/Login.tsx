@@ -1,3 +1,4 @@
+import Brand from '../components/Brand';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { request, message } from '../lib/api';
@@ -31,8 +32,7 @@ export default function Login({ onLogin }: { onLogin: (token: string) => void })
           void submit();
         }}
       >
-        <div className="login-mark">A</div>
-        <p className="eyebrow">AI OPS GATEWAY</p>
+        <Brand />
         <h1>{t('signIn')}</h1>
         <label>
           {t('tokenLabel')}

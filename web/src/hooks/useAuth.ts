@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { message } from '../lib/api';
 
-const tokenKey = 'ai-ops-gateway-token';
+const tokenKey = 'ops-gateway-mcp-token';
 
+// Hook 将登录状态与 sessionStorage 绑定，刷新页面后可恢复会话。
 export function useAuth() {
   const [token, setToken] = useState(() => sessionStorage.getItem(tokenKey) || '');
   const [verified, setVerified] = useState(false);

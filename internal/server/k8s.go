@@ -1,7 +1,7 @@
 package server
 
 import (
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
 	"github.com/labstack/echo/v5"
 )
 

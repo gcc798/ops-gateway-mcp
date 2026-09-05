@@ -3,15 +3,23 @@ import { useTranslation } from 'react-i18next';
 import { useList } from '../hooks/usePaginatedQuery';
 import { get, message } from '../lib/api';
 import type { Operation, Summary } from '../types/api';
-import OperationDetail from '../components/audit/OperationDetail';
+import { useNavigate } from 'react-router-dom';
+import { resourcePaths } from '../config/resources';
+import type { ResourceKind } from '../types/api';
 import Operations from '../components/audit/OperationsTable';
 import { ErrorBox, Loading } from '../components/Feedback';
 
-export default function Overview({ token, openAudit }: { token: string; openAudit: () => void }) {
+export default function Overview({ token }: { token: string }) {
+  const navigate = useNavigate();
+  const openAudit = () => navigate('/audit');
   const { t } = useTranslation();
   const [summary, setSummary] = useState<Summary>();
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState('');
+  const setSelected = (id: string) => navigate('/audit/' + encodeURIComponent(id));
+  const pending = useList<Operation>('/api/v1/audit/operations', token, {
+    status: 'pending',
+    page_size: '1',
+  });
   const [revision, setRevision] = useState(0);
   const {
     data,
@@ -34,49 +42,37 @@ export default function Overview({ token, openAudit }: { token: string; openAudi
     const timer = window.setInterval(() => {
       setRevision((value) => value + 1);
       refresh();
+      pending.refresh();
     }, 15000);
     return () => window.clearInterval(timer);
   }, []);
-  if (selected)
-    return (
-      <OperationDetail
-        id={selected}
-        token={token}
-        back={() => {
-          setSelected('');
-          refresh();
-          setRevision((value) => value + 1);
-        }}
-      />
-    );
   const cards = [
-    ['calls', summary?.total],
-    ['allowed', summary?.allow],
-    ['confirm', summary?.confirm],
-    ['denied', summary?.deny],
-    ['failed', summary?.failed],
+    ['calls', summary?.total, ''],
+    ['allowed', summary?.allow, '?decision=allow'],
+    ['confirm', summary?.confirm, '?decision=confirm'],
+    ['denied', summary?.deny, '?decision=deny'],
+    ['failed', summary?.failed, '?status=failed'],
   ] as const;
   return (
     <>
-      <section className="hero">
-        <div>
-          <p className="eyebrow">{t('security')}</p>
-          <h2>
-            {t('every')}
-            <br />
-            <em>{t('decided')}</em>
-          </h2>
-          <p className="muted">{t('intent')}</p>
-        </div>
+      <section className="resource-totals">
+        {(Object.keys(resourcePaths) as ResourceKind[]).map((kind) => (
+          <ResourceCount key={kind} kind={kind} token={token} />
+        ))}
+        <button className="stat" onClick={() => navigate('/audit?status=pending')}>
+          <span>{t('pending')}</span>
+          <strong>{pending.data?.total ?? '—'}</strong>
+        </button>
       </section>
+      <ErrorBox error={pending.error} />
       <ErrorBox error={error || listError} />
       <p className="muted">{t('allTimeStats')}</p>
       <section className="stats">
-        {cards.map(([label, value]) => (
-          <div className="stat" key={label}>
+        {cards.map(([label, value, query]) => (
+          <button className="stat" key={label} onClick={() => navigate('/audit' + query)}>
             <span>{t('stats.' + label)}</span>
             <strong>{value ?? '—'}</strong>
-          </div>
+          </button>
         ))}
       </section>
       <section className="panel overview-recent">
@@ -89,5 +85,19 @@ export default function Overview({ token, openAudit }: { token: string; openAudi
         {data ? <Operations items={data.items} select={setSelected} /> : !listError && <Loading />}
       </section>
     </>
+  );
+}
+
+function ResourceCount({ kind, token }: { kind: ResourceKind; token: string }) {
+  const navigate = useNavigate();
+  const { data, error } = useList(resourcePaths[kind], token, { page_size: '1' });
+  return (
+    <div>
+      <button className="stat" onClick={() => navigate('/' + kind)}>
+        <span>{kind === 'database' ? 'Database' : kind === 'linux' ? 'Linux' : 'Kubernetes'}</span>
+        <strong>{data?.total ?? '—'}</strong>
+      </button>
+      <ErrorBox error={error} />
+    </div>
   );
 }

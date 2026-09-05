@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	"github.com/gcc798/ai-ops-gateway/internal/policy"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	"github.com/gcc798/ops-gateway-mcp/internal/policy"
 )
 
 func TestEvaluateSQLDecisions(t *testing.T) {

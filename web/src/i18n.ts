@@ -2,6 +2,34 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 const zh = {
+  chooseDateTime: '选择日期和时间',
+  clearDate: '清除日期',
+  previousMonth: '上个月',
+  nextMonth: '下个月',
+  preferences: '界面偏好',
+  darkTheme: '深色主题',
+  language: '语言',
+  copy: '复制',
+  copied: '已复制',
+  copyFailed: '复制失败',
+  failed: '失败',
+  basicInfo: '基本信息',
+  requestInfo: '请求',
+  policyResult: '策略决策',
+  executionResult: '执行结果',
+  relatedAudit: '相关审计',
+  resourceDetail: '查看资源',
+  connectionCheck: '最近连接测试',
+  untested: '尚未测试',
+  policyActions: {
+    'read-only SQL': '只读 SQL',
+    'scoped mutation / schema change': '限定范围的数据写入 / 表结构变更',
+    'destructive or unscoped mutation': '破坏性操作 / 无范围限定的修改',
+    'fixed read tools': '固定只读工具',
+    'restart service': '重启服务',
+    'fixed read tools / file download': '固定只读工具 / 文件下载',
+    'rollout restart': '滚动重启',
+  },
   internalConsole: '内部开发者控制台',
   loading: '加载中…',
   all: '全部',
@@ -131,6 +159,25 @@ const zh = {
   signOut: '退出',
 };
 const en = {
+  chooseDateTime: 'Select date and time',
+  clearDate: 'Clear date',
+  previousMonth: 'Previous month',
+  nextMonth: 'Next month',
+  preferences: 'Preferences',
+  darkTheme: 'Dark theme',
+  language: 'Language',
+  copy: 'Copy',
+  copied: 'Copied',
+  copyFailed: 'Copy failed',
+  failed: 'Failed',
+  basicInfo: 'Basic information',
+  requestInfo: 'Request',
+  policyResult: 'Policy decision',
+  executionResult: 'Execution result',
+  relatedAudit: 'Related audit',
+  resourceDetail: 'View resource',
+  connectionCheck: 'Last connection test',
+  untested: 'Not tested',
   internalConsole: 'INTERNAL DEVELOPER CONSOLE',
   loading: 'Loading…',
   all: 'All',
@@ -260,12 +307,14 @@ const en = {
   signOut: 'Sign out',
 };
 
-const saved = localStorage.getItem('ai-ops-gateway-language');
+const saved = localStorage.getItem('ops-gateway-mcp-language');
 i18n.use(initReactI18next).init({
   resources: { 'zh-CN': { translation: zh }, 'en-US': { translation: en } },
   lng: saved === 'en-US' ? 'en-US' : 'zh-CN',
   fallbackLng: 'en-US',
   interpolation: { escapeValue: false },
 });
-i18n.on('languageChanged', (language) => localStorage.setItem('ai-ops-gateway-language', language));
+i18n.on('languageChanged', (language) =>
+  localStorage.setItem('ops-gateway-mcp-language', language),
+);
 export default i18n;

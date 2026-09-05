@@ -10,15 +10,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
-	"github.com/gcc798/ai-ops-gateway/internal/observability"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
-	"github.com/gcc798/ai-ops-gateway/internal/server"
-	"github.com/gcc798/ai-ops-gateway/internal/storage"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
+	"github.com/gcc798/ops-gateway-mcp/internal/observability"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/server"
+	"github.com/gcc798/ops-gateway-mcp/internal/storage"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -28,7 +28,7 @@ import (
 var webFS embed.FS
 
 func main() {
-	root := &cobra.Command{Use: "ai-ops-gateway", Short: "AI Agent operations security gateway", Version: "0.1.0", SilenceUsage: true}
+	root := &cobra.Command{Use: "ops-gateway-mcp", Short: "AI Agent operations security gateway", Version: "0.1.0", SilenceUsage: true}
 	root.AddCommand(&cobra.Command{Use: "serve", Short: "Start the MCP, REST and Web server", RunE: func(*cobra.Command, []string) error { return serve() }})
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
@@ -47,7 +47,7 @@ func serve() error {
 
 func run(logger *slog.Logger, paths resources.Paths) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	db, err := storage.Open(ctx, filepath.Join(paths.Data, "ai-ops-gateway.db"))
+	db, err := storage.Open(ctx, filepath.Join(paths.Data, "ops-gateway-mcp.db"))
 	cancel()
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func run(logger *slog.Logger, paths resources.Paths) error {
 			}
 		}
 	}()
-	for _, item := range []struct{ name, env, scope string }{{"mcp", "AI_OPS_GATEWAY_MCP_TOKEN", auth.ScopeMCP}, {"rest", "AI_OPS_GATEWAY_REST_TOKEN", auth.ScopeREST}, {"admin", "AI_OPS_GATEWAY_ADMIN_TOKEN", auth.ScopeRESTMCP}} {
+	for _, item := range []struct{ name, env, scope string }{{"mcp", "OPS_GATEWAY_MCP_MCP_TOKEN", auth.ScopeMCP}, {"rest", "OPS_GATEWAY_MCP_REST_TOKEN", auth.ScopeREST}, {"admin", "OPS_GATEWAY_MCP_ADMIN_TOKEN", auth.ScopeRESTMCP}} {
 		token, configured := os.LookupEnv(item.env)
 		if !configured {
 			continue

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/middleware"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/middleware"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )

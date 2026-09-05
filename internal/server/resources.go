@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
 	"github.com/labstack/echo/v5"
 )
 
@@ -18,9 +18,13 @@ func (d *Dependencies) resourceList(c *echo.Context, kind string) error {
 		Query: q, Name: c.QueryParam("name"), Environment: c.QueryParam("environment"),
 		Driver: c.QueryParam("driver"), Address: c.QueryParam("address"),
 		User: c.QueryParam("user"), Context: c.QueryParam("context"),
+		Sort: c.QueryParam("sort"), Order: c.QueryParam("order"),
 	}
 	if (f.Driver != "" && kind != "database") || ((f.Address != "" || f.User != "") && kind != "linux") || (f.Context != "" && kind != "kubernetes") {
 		return c.JSON(400, errorBody("INVALID_FILTER", "filter not supported for resource type"))
+	}
+	if _, err := f.SortClause(kind); err != nil {
+		return c.JSON(400, errorBody("INVALID_FILTER", err.Error()))
 	}
 	v, err := d.App.ListResources(c.Request().Context(), kind, f)
 	if err != nil {

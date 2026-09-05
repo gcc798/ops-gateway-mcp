@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
 )
 
 func (s *Service) ListResources(ctx context.Context, kind string, f resources.Filter) (pagination.Result[resources.Resource], error) {

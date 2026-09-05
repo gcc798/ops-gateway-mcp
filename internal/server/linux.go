@@ -1,7 +1,7 @@
 package server
 
 import (
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
 	"github.com/labstack/echo/v5"
 	"net/http"
 )

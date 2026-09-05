@@ -7,3 +7,5 @@ Config 覆盖 SQLite 初始化与版本升级、事务失败回滚、明文字�
 检查命令：`gofmt -w .`、`go test ./...`、`go vet ./...`、`cd web && pnpm format:check && pnpm build`、`make build`。
 
 `internal/storage` 覆盖空库初始化、已版本化数据库升级、备份内容和权限、重复启动、较新数据库拒绝启动、SQL 迁移事务回滚和取消启动。Audit 覆盖全部字段的 sqlx 往返映射。迁移测试只使用临时 SQLite，不接触开发者实际资源库。
+
+浏览器回归使用 `GATEWAY_BROWSER_TEST_ADDR=127.0.0.1:19095 go test ./internal/server -run TestBrowserFixture -v -timeout 20m`，服务只创建临时 SQLite 与测试 Token，不操作实际资源库。先执行前端构建，在浏览器登录 `browser-test-token` 并进入 Database 页，再通过 Playwright CLI `run-code --filename web/tests/browser-smoke.js` 检查排序、分页、筛选、详情刷新、浏览器历史、关联审计、确认失败/过期、明文复制、主题与移动端。确认失败连接固定本机不可连接地址，不访问真实数据库；成功执行仍由后端相关测试和实际资源环境验证。

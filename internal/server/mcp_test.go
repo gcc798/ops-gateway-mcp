@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
-	"github.com/gcc798/ai-ops-gateway/internal/service"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
+	"github.com/gcc798/ops-gateway-mcp/internal/service"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

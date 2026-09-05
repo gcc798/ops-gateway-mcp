@@ -1,8 +1,8 @@
 # Audit 与可观测
 
-Application Log 使用 JSON `slog`，写入 `AI_OPS_GATEWAY_LOGS`，按自然日生成 `ai-ops-gateway-YYYY-MM-DD.log`。字段包括 time、level、request_id、operation_id、client、tool、environment、resource、action、policy_decision、status、duration_ms、error，禁止 Secret。
+Application Log 使用 JSON `slog`，写入 `OPS_GATEWAY_MCP_LOGS`，按自然日生成 `ops-gateway-mcp-YYYY-MM-DD.log`。字段包括 time、level、request_id、operation_id、client、tool、environment、resource、action、policy_decision、status、duration_ms、error，禁止 Secret。
 
-Audit 与资源描述统一写入 AI_OPS_GATEWAY_DATA/ai-ops-gateway.db；资源表与 Audit 表逻辑隔离。operations 包含 operation_id、request_id、时间、client/tool、环境、资源、action/target、risk、decision/reason、status、影响行数、耗时、statement_hash、resource_revision、confirmed_by、error。client/confirmed_by 来自认证 Token 名称，不采信调用方自报身份；共享 Token 无法区分开发者个人。SQL 原文保存在 pending_operations，确认完成后删除；pending 详情可明文查看。
+Audit 与资源描述统一写入 OPS_GATEWAY_MCP_DATA/ops-gateway-mcp.db；资源表与 Audit 表逻辑隔离。operations 包含 operation_id、request_id、时间、client/tool、环境、资源、action/target、risk、decision/reason、status、影响行数、耗时、statement_hash、resource_revision、confirmed_by、error。client/confirmed_by 来自认证 Token 名称，不采信调用方自报身份；共享 Token 无法区分开发者个人。SQL 原文保存在 pending_operations，确认完成后删除；pending 详情可明文查看。
 
 Audit 列表按日期、工具、资源类型等条件在 SQLite 分页，索引覆盖时间以及 tool/resource_type + 时间；页内稳定排序，总数与记录在同一读事务中获取。Overview 使用独立全库聚合，不从分页结果计算总量。
 

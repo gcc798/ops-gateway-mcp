@@ -30,7 +30,7 @@ func (w *DailyWriter) Write(p []byte) (int, error) {
 		if w.file != nil {
 			_ = w.file.Close()
 		}
-		file, err := os.OpenFile(filepath.Join(w.dir, "ai-ops-gateway-"+today+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		file, err := os.OpenFile(filepath.Join(w.dir, "ops-gateway-mcp-"+today+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
 			return 0, fmt.Errorf("open daily log: %w", err)
 		}

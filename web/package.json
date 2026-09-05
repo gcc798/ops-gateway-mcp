@@ -1,5 +1,5 @@
 {
-  "name": "ai-ops-gateway-web",
+  "name": "ops-gateway-mcp-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,12 +10,16 @@
     "format:check": "prettier --check src vite.config.ts tsconfig.json package.json index.html .prettierrc.json"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.3.7",
     "@vitejs/plugin-react": "latest",
+    "date-fns": "^4.4.0",
     "i18next": "^26.4.1",
     "lucide-react": "latest",
     "react": "latest",
+    "react-datepicker": "^9.1.0",
     "react-dom": "latest",
     "react-i18next": "^17.0.13",
+    "react-router-dom": "^7.18.3",
     "typescript": "latest",
     "vite": "latest"
   },

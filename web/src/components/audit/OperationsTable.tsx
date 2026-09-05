@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Operation } from '../../types/api';
 import { Empty } from '../Feedback';
@@ -39,10 +40,17 @@ export default function Operations({
               <td>{op.resource || '—'}</td>
               <td>{op.environment || '—'}</td>
               <td className={'decision-' + op.decision}>{op.decision}</td>
-              <td>{op.status}</td>
               <td>
-                <button className="link" onClick={() => select(op.operation_id)}>
-                  {t('details')} →
+                <span className={'status-badge status-' + op.status}>{op.status}</span>
+              </td>
+              <td>
+                <button
+                  className="icon"
+                  title={t('details')}
+                  aria-label={t('details')}
+                  onClick={() => select(op.operation_id)}
+                >
+                  <ArrowRight size={16} />
                 </button>
               </td>
             </tr>

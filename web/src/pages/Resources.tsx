@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowRight, RefreshCw } from 'lucide-react';
+import { useListLocation } from '../hooks/useListLocation';
 import { useTranslation } from 'react-i18next';
 import { resourcePaths, resourceFields } from '../config/resources';
 import { useList } from '../hooks/usePaginatedQuery';
-import type { Params, Resource, ResourceKind } from '../types/api';
+import type { Resource, ResourceKind } from '../types/api';
 import Filters from '../components/Filters';
 import Pagination from '../components/Pagination';
 import ResourceDetail from '../components/resources/ResourceDetail';
@@ -10,8 +11,7 @@ import { ErrorBox, Loading, Empty } from '../components/Feedback';
 
 export default function Resources({ kind, token }: { kind: ResourceKind; token: string }) {
   const { t } = useTranslation();
-  const [params, setParams] = useState<Params>({ page: '1', page_size: '20' });
-  const [selected, setSelected] = useState('');
+  const { params, setParams, selected, setSelected } = useListLocation('/' + kind);
   const { data, loading, error, refresh } = useList<Resource>(resourcePaths[kind], token, params);
   const columns =
     kind === 'database'
@@ -21,7 +21,13 @@ export default function Resources({ kind, token }: { kind: ResourceKind; token: 
         : ['name', 'environment', 'context'];
   if (selected)
     return (
-      <ResourceDetail kind={kind} name={selected} token={token} back={() => setSelected('')} />
+      <ResourceDetail
+        key={selected}
+        kind={kind}
+        name={selected}
+        token={token}
+        back={() => setSelected('')}
+      />
     );
   return (
     <section className="panel resource-panel">
@@ -35,14 +41,23 @@ export default function Resources({ kind, token }: { kind: ResourceKind; token: 
                 : 'kubernetesClusters',
           )}
         </h3>
-        <button className="button" onClick={refresh}>
-          {t('refresh')}
+        <button className="icon" title={t('refresh')} aria-label={t('refresh')} onClick={refresh}>
+          <RefreshCw size={16} />
         </button>
       </div>
       <Filters
+        key={JSON.stringify(params)}
         fields={resourceFields[kind]}
         values={params}
-        onApply={(filters) => setParams({ ...filters, page: '1', page_size: params.page_size })}
+        onApply={(filters) =>
+          setParams({
+            ...filters,
+            sort: params.sort || 'name',
+            order: params.order || 'asc',
+            page: '1',
+            page_size: params.page_size,
+          })
+        }
       />
       <ErrorBox error={error} />
       {loading ? (
@@ -53,7 +68,35 @@ export default function Resources({ kind, token }: { kind: ResourceKind; token: 
             <thead>
               <tr>
                 {columns.map((col) => (
-                  <th key={col}>{t('fields.' + col)}</th>
+                  <th
+                    key={col}
+                    aria-sort={
+                      params.sort === col || (!params.sort && col === 'name')
+                        ? params.order === 'desc'
+                          ? 'descending'
+                          : 'ascending'
+                        : 'none'
+                    }
+                  >
+                    <button
+                      className="sort-button"
+                      onClick={() =>
+                        setParams({
+                          ...params,
+                          sort: col,
+                          order:
+                            (params.sort || 'name') === col && params.order !== 'desc'
+                              ? 'desc'
+                              : 'asc',
+                          page: '1',
+                        })
+                      }
+                    >
+                      {t('fields.' + col)}
+                      {(params.sort || 'name') === col &&
+                        (params.order === 'desc' ? <ArrowDown size={13} /> : <ArrowUp size={13} />)}
+                    </button>
+                  </th>
                 ))}
                 <th>{t('details')}</th>
               </tr>
@@ -66,13 +109,24 @@ export default function Resources({ kind, token }: { kind: ResourceKind; token: 
                       <span
                         className={col === 'environment' && item[col] === 'prod' ? 'risk-high' : ''}
                       >
-                        {item[col] || '—'}
+                        {col === 'name' ? (
+                          <button className="link" onClick={() => setSelected(item.name)}>
+                            {item.name}
+                          </button>
+                        ) : (
+                          item[col] || '—'
+                        )}
                       </span>
                     </td>
                   ))}
                   <td>
-                    <button className="link" onClick={() => setSelected(item.name)}>
-                      {t('details')} →
+                    <button
+                      className="icon"
+                      title={t('details')}
+                      aria-label={t('details')}
+                      onClick={() => setSelected(item.name)}
+                    >
+                      <ArrowRight size={16} />
                     </button>
                   </td>
                 </tr>

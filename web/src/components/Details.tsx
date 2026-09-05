@@ -1,3 +1,4 @@
+import CopyButton from './CopyButton';
 import { useTranslation } from 'react-i18next';
 
 export default function Details({ value }: { value: object }) {
@@ -8,7 +9,18 @@ export default function Details({ value }: { value: object }) {
         <div key={key}>
           <dt>{t('fields.' + key, { defaultValue: key })}</dt>
           <dd>
-            <pre>{String(value ?? '') || '—'}</pre>
+            <pre>
+              {typeof value === 'object' && value !== null
+                ? JSON.stringify(value, null, 2)
+                : String(value ?? '') || '—'}
+            </pre>
+            <CopyButton
+              value={
+                typeof value === 'object' && value !== null
+                  ? JSON.stringify(value, null, 2)
+                  : String(value ?? '')
+              }
+            />
           </dd>
         </div>
       ))}

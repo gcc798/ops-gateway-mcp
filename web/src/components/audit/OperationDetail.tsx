@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { get, request, message } from '../../lib/api';
 import type { Operation } from '../../types/api';
@@ -20,6 +21,11 @@ export default function OperationDetail({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     get<Operation>('/api/v1/audit/operations/' + encodeURIComponent(id), token, controller.signal)
@@ -36,16 +42,16 @@ export default function OperationDetail({
       await request('/api/v1/operations/' + encodeURIComponent(id) + '/confirm', token, {
         method: 'POST',
       });
-      setOp(undefined);
-      setRevision((value) => value + 1);
+      setOp(await get<Operation>('/api/v1/audit/operations/' + encodeURIComponent(id), token));
     } catch (error) {
       setError(message(error));
+      setOp(undefined);
       setRevision((value) => value + 1);
     } finally {
       setBusy(false);
     }
   };
-  const expired = !!op?.expires_at && new Date(op.expires_at).getTime() <= Date.now();
+  const expired = !!op?.expires_at && new Date(op.expires_at).getTime() <= now;
   return (
     <section className="panel">
       <div className="panel-head">
@@ -68,7 +74,38 @@ export default function OperationDetail({
         <ErrorBox error={error} />
         {op ? (
           <>
-            <Details value={op} />
+            {['database', 'linux', 'kubernetes'].includes(op.resource_type) && op.resource && (
+              <Link
+                className="link"
+                to={'/' + op.resource_type + '/' + encodeURIComponent(op.resource)}
+              >
+                {t('resourceDetail')}
+              </Link>
+            )}
+            {[
+              [
+                'basicInfo',
+                ['operation_id', 'timestamp', 'resource_type', 'resource', 'environment', 'target'],
+              ],
+              [
+                'requestInfo',
+                ['request_id', 'client', 'tool', 'action', 'statement', 'expires_at'],
+              ],
+              ['policyResult', ['risk', 'decision', 'reason']],
+              [
+                'executionResult',
+                ['status', 'confirmed_by', 'duration_ms', 'affected_rows', 'error'],
+              ],
+            ].map(([title, keys]) => (
+              <section key={String(title)}>
+                <h3 className="section-title">{t(String(title))}</h3>
+                <Details
+                  value={Object.fromEntries(
+                    Object.entries(op).filter(([key]) => (keys as string[]).includes(key)),
+                  )}
+                />
+              </section>
+            ))}
             {op.status === 'pending' && (
               <div className="approval">
                 <p>{expired ? t('operationExpired') : t('confirmHint')}</p>

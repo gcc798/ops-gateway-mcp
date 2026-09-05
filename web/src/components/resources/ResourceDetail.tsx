@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Cable } from 'lucide-react';
 import { resourcePaths } from '../../config/resources';
 import { get, request, message } from '../../lib/api';
 import type { Resource, ResourceKind } from '../../types/api';
@@ -24,6 +25,8 @@ export default function ResourceDetail({
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState('');
   const [output, setOutput] = useState('');
+  const [checkedAt, setCheckedAt] = useState('');
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     get<Resource>(resourcePaths[kind] + '/' + encodeURIComponent(name), token, controller.signal)
@@ -35,6 +38,7 @@ export default function ResourceDetail({
   }, [kind, name, token]);
   const test = async () => {
     setTesting(true);
+    setFailed(false);
     setStatus('');
     setOutput('');
     try {
@@ -63,9 +67,11 @@ export default function ResourceDetail({
           ).text(),
         );
     } catch (error) {
+      setFailed(true);
       setStatus(message(error));
     } finally {
       setTesting(false);
+      setCheckedAt(new Date().toLocaleString());
     }
   };
   return (
@@ -75,16 +81,39 @@ export default function ResourceDetail({
           <ArrowLeft size={15} />
           {t('backToResources')}
         </button>
-        <button className="button" disabled={testing} onClick={() => void test()}>
+        <button className="button" disabled={testing || !resource} onClick={() => void test()}>
+          <Cable size={16} />
           {testing ? t('checking') : t('testConnection')}
         </button>
       </div>
       <div className="detail-body">
         <h2>{name}</h2>
-        <p className="muted">{t('plaintextConfig')}</p>
+        <Link
+          className="link"
+          to={'/audit?' + new URLSearchParams({ resource_type: kind, resource: name })}
+        >
+          {t('relatedAudit')}
+        </Link>
+        <h3 className="section-title">{t('basicInfo')}</h3>
         <ErrorBox error={error} />
-        {resource ? <Details value={resource} /> : !error && <Loading />}
-        {status && <p role="status">{status}</p>}
+        {resource ? (
+          <>
+            <Details value={{ name: resource.name, environment: resource.environment }} />
+            <h3 className="section-title">{t('plaintextConfig')}</h3>
+            <Details
+              value={Object.fromEntries(
+                Object.entries(resource).filter(([key]) => key !== 'name' && key !== 'environment'),
+              )}
+            />
+          </>
+        ) : (
+          !error && <Loading />
+        )}
+        <h3 className="section-title">{t('connectionCheck')}</h3>
+        <p role="status" className={failed ? 'decision-deny' : 'muted'}>
+          {testing ? t('checking') : status || t('untested')}
+          {checkedAt && !testing && <time> · {checkedAt}</time>}
+        </p>
         {output && <pre className="detail-output">{output}</pre>}
       </div>
     </section>

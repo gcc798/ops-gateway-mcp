@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
 	"github.com/labstack/echo/v5"
 )
 

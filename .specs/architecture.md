@@ -1,9 +1,9 @@
 # 总体架构
 
-`ai-ops-gateway` 面向 Codex、Claude Code、Cursor 等 MCP Agent，第一阶段管理 PostgreSQL、MySQL、Linux、Kubernetes。
+`ops-gateway-mcp` 面向 Codex、Claude Code、Cursor 等 MCP Agent，第一阶段管理 PostgreSQL、MySQL、Linux、Kubernetes。
 
 ```text
-Agent --MCP--> ai-ops-gateway <--REST/Web-- Admin
+Agent --MCP--> ops-gateway-mcp <--REST/Web-- Admin
                          |
                  Application Service
                          |

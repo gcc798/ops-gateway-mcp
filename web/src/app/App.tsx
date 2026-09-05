@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Database,
@@ -11,6 +11,8 @@ import {
   ShieldAlert,
   Sun,
 } from 'lucide-react';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Brand from '../components/Brand';
 import { useAuth } from '../hooks/useAuth';
 import Login from '../pages/Login';
 import Overview from '../pages/Overview';
@@ -20,6 +22,7 @@ import Policy from '../pages/Policy';
 import SettingsView from '../pages/Settings';
 import { ErrorBox } from '../components/Feedback';
 
+// App 负责全局布局、路由和登录状态，页面业务放在 pages 目录。
 const nav = [
   ['Overview', Gauge],
   ['Database', Database],
@@ -29,12 +32,18 @@ const nav = [
   ['Audit', FileCheck2],
   ['Settings', Settings],
 ] as const;
-type Page = (typeof nav)[number][0];
 
 export default function App() {
   const { t, i18n } = useTranslation();
-  const [page, setPage] = useState<Page>('Overview');
-  const [dark, setDark] = useState(true);
+  const location = useLocation();
+  const page =
+    nav.find(([label]) => location.pathname.split('/')[1] === label.toLowerCase())?.[0] ||
+    'Overview';
+  const [dark, setDark] = useState(() => localStorage.getItem('ops-gateway-mcp-theme') === 'dark');
+  useEffect(() => {
+    localStorage.setItem('ops-gateway-mcp-theme', dark ? 'dark' : 'light');
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  }, [dark]);
   const { token, verified, error, retry, login, logout } = useAuth();
   if (!token) return <Login onLogin={login} />;
   if (!verified)
@@ -60,32 +69,17 @@ export default function App() {
   return (
     <div className={dark ? 'app dark' : 'app'}>
       <aside>
-        <div className="brand">
-          <span className="mark">A</span>
-          <span>
-            AI OPS
-            <br />
-            <b>GATEWAY</b>
-          </span>
-        </div>
+        <Brand />
         <div className="env">{t('internalConsole')}</div>
         <nav>
           {nav.map(([label, Icon]) => (
-            <button
-              className={page === label ? 'active' : ''}
-              onClick={() => setPage(label)}
-              key={label}
-            >
+            <NavLink to={'/' + label.toLowerCase()} key={label}>
               <Icon size={16} />
               {t('nav.' + label)}
-            </button>
+            </NavLink>
           ))}
         </nav>
-        <div className="side-foot">
-          v0.1.0 · local
-          <br />
-          <span>{t('active')}</span>
-        </div>
+        <div className="side-foot">{t('local')}</div>
       </aside>
       <main>
         <header>
@@ -108,18 +102,38 @@ export default function App() {
             >
               {i18n.language === 'zh-CN' ? 'EN' : '中'}
             </button>
-            <button className="icon" onClick={() => setDark(!dark)} aria-label={t('toggleTheme')}>
+            <button
+              className="icon"
+              onClick={() => setDark(!dark)}
+              aria-label={t('toggleTheme')}
+              title={t('toggleTheme')}
+            >
               {dark ? <Sun size={17} /> : <Moon size={17} />}
             </button>
           </div>
         </header>
-        {page === 'Overview' && <Overview token={token} openAudit={() => setPage('Audit')} />}
-        {page === 'Database' && <Resources key="database" kind="database" token={token} />}
-        {page === 'Linux' && <Resources key="linux" kind="linux" token={token} />}
-        {page === 'Kubernetes' && <Resources key="kubernetes" kind="kubernetes" token={token} />}
-        {page === 'Audit' && <AuditView token={token} />}
-        {page === 'Policy' && <Policy />}
-        {page === 'Settings' && <SettingsView token={token} />}
+        <Routes>
+          <Route path="/overview" element={<Overview token={token} />} />
+          <Route
+            path="/database/:id?"
+            element={<Resources key="database" kind="database" token={token} />}
+          />
+          <Route
+            path="/linux/:id?"
+            element={<Resources key="linux" kind="linux" token={token} />}
+          />
+          <Route
+            path="/kubernetes/:id?"
+            element={<Resources key="kubernetes" kind="kubernetes" token={token} />}
+          />
+          <Route path="/audit/:id?" element={<AuditView token={token} />} />
+          <Route path="/policy" element={<Policy token={token} />} />
+          <Route
+            path="/settings"
+            element={<SettingsView token={token} dark={dark} setDark={setDark} />}
+          />
+          <Route path="*" element={<Navigate to="/overview" replace />} />
+        </Routes>
       </main>
     </div>
   );

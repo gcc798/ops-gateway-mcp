@@ -6,13 +6,13 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
 	"io"
 	"log/slog"
 	"net/http"
@@ -83,7 +83,7 @@ func TestAuthenticatedCatalogAndAudit(t *testing.T) {
 	if rr.Code != 200 || !strings.Contains(rr.Body.String(), "visible-password") || rr.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("detail: %s", rr.Body)
 	}
-	for _, path := range []string{"/api/v1/databases?page=0", "/api/v1/linux/hosts?page_size=101", "/api/v1/kubernetes/clusters?page=x", "/api/v1/databases?address=abc", "/api/v1/audit/operations?from=invalid", "/api/v1/audit/operations?from=2026-09-06T00:00:00Z&to=2026-09-05T00:00:00Z"} {
+	for _, path := range []string{"/api/v1/databases?sort=dsn", "/api/v1/linux/hosts?sort=driver", "/api/v1/databases?order=invalid", "/api/v1/databases?page=0", "/api/v1/linux/hosts?page_size=101", "/api/v1/kubernetes/clusters?page=x", "/api/v1/databases?address=abc", "/api/v1/audit/operations?from=invalid", "/api/v1/audit/operations?from=2026-09-06T00:00:00Z&to=2026-09-05T00:00:00Z"} {
 		if rr := get(path, "test-rest-token"); rr.Code != http.StatusBadRequest {
 			t.Fatalf("%s: %d %s", path, rr.Code, rr.Body)
 		}
@@ -102,5 +102,16 @@ func TestAuthenticatedCatalogAndAudit(t *testing.T) {
 	}
 	if len(ops.Items) != 1 || ops.Items[0].Client != "developer" || ops.Items[0].RequestID == "" || ops.Items[0].Resource != "db-00" {
 		t.Fatalf("REST audit: %s", rr.Body)
+	}
+	if rr := get("/api/v1/audit/filter-options", ""); rr.Code != 401 {
+		t.Fatal("filter options require authentication")
+	}
+	rr = get("/api/v1/audit/filter-options", "test-rest-token")
+	var options audit.FilterOptions
+	if err := json.Unmarshal(rr.Body.Bytes(), &options); err != nil {
+		t.Fatal(err)
+	}
+	if rr.Code != 200 || len(options.Clients) != 1 || options.Clients[0] != "developer" || len(options.Tools) < 2 || rr.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("filter options: %s", rr.Body)
 	}
 }

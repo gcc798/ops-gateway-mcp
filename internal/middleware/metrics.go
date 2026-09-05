@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	httpRequests = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "ai_ops_gateway_http_requests_total", Help: "HTTP requests handled by the gateway."}, []string{"method", "route", "status"})
-	httpDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "ai_ops_gateway_http_request_duration_seconds", Help: "HTTP request duration."}, []string{"method", "route"})
+	httpRequests = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "ops_gateway_mcp_http_requests_total", Help: "HTTP requests handled by the gateway."}, []string{"method", "route", "status"})
+	httpDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "ops_gateway_mcp_http_request_duration_seconds", Help: "HTTP request duration."}, []string{"method", "route"})
 )
 
 func init() { prometheus.MustRegister(httpRequests, httpDuration) }

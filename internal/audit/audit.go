@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/storage"
+	"github.com/gcc798/ops-gateway-mcp/internal/storage"
 	"github.com/jmoiron/sqlx"
 )
 

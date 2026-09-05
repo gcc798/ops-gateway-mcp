@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Field, Params } from '../types/api';
+import DateTimePicker from './DateTimePicker';
 
 export default function Filters({
   fields,
@@ -16,12 +17,6 @@ export default function Filters({
     Object.fromEntries(
       fields.map((field) => {
         let value = values[field.name] || '';
-        if (value && field.type === 'datetime-local') {
-          const date = new Date(value);
-          value = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 19);
-        }
         return [field.name, value];
       }),
     ),
@@ -41,21 +36,34 @@ export default function Filters({
       }}
     >
       {fields.map((field) => (
-        <label key={field.name}>
-          {t('fields.' + field.name)}
-          {field.options ? (
+        <div
+          className={'filter-field' + (field.type === 'datetime-local' ? ' filter-date' : '')}
+          key={field.name}
+        >
+          <label htmlFor={'filter-' + field.name}>{t('fields.' + field.name)}</label>
+          {field.type === 'datetime-local' ? (
+            <DateTimePicker
+              name={field.name}
+              value={draft[field.name] || ''}
+              onChange={(value) => setDraft({ ...draft, [field.name]: value })}
+            />
+          ) : field.options ? (
             <select
+              id={'filter-' + field.name}
               name={field.name}
               value={draft[field.name] || ''}
               onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })}
             >
               <option value="">{t('all')}</option>
-              {field.options.map((value) => (
+              {[
+                ...new Set([...field.options, ...(draft[field.name] ? [draft[field.name]] : [])]),
+              ].map((value) => (
                 <option key={value}>{value}</option>
               ))}
             </select>
           ) : (
             <input
+              id={'filter-' + field.name}
               name={field.name}
               value={draft[field.name] || ''}
               onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })}
@@ -64,7 +72,7 @@ export default function Filters({
               placeholder={field.type ? undefined : t('fields.' + field.name)}
             />
           )}
-        </label>
+        </div>
       ))}
       <div className="filter-actions">
         <button className="button primary" type="submit">

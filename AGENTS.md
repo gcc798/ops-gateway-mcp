@@ -1,7 +1,7 @@
-# ai-ops-gateway Agent 指南
+# ops-gateway-mcp Agent 指南
 
 ## 项目定位
-`ai-ops-gateway` 是面向 Codex、Claude Code、Cursor 等 MCP Agent 的运维安全网关，第一阶段覆盖 PostgreSQL、MySQL、Linux 和 Kubernetes。
+`ops-gateway-mcp` 是面向 Codex、Claude Code、Cursor 等 MCP Agent 的运维安全网关，第一阶段覆盖 PostgreSQL、MySQL、Linux 和 Kubernetes。
 
 核心原则：**Agent thinks. Gateway decides and executes.** Agent 负责理解、推理、选 Tool 和分析结果；Gateway 负责资源定位、Policy、确认、执行、Secret、Audit、日志和可观测。安全不能依赖 Prompt 或 Agent 自觉。
 
@@ -19,7 +19,7 @@
 ## 技术栈与发布
 当前实际依赖：Go 1.26、Echo v5.3.1、官方 MCP Go SDK、Cobra、database/sql、pgx v5、go-sql-driver/mysql、x/crypto/ssh、client-go、yaml.v3、modernc SQLite、Prometheus client_golang，以及 React 19、TypeScript、Vite、Lucide。
 
-`pnpm build` 生成 `web/dist`；`go build` 将前端嵌入单个 `ai-ops-gateway`。运行时只需 `./ai-ops-gateway serve`，地址为 `127.0.0.1:9095`，端点包括 `/`、`/api/v1/...`、`/mcp` 和 `/healthz`。
+`pnpm build` 生成 `web/dist`；`go build` 将前端嵌入单个 `ops-gateway-mcp`。运行时只需 `./ops-gateway-mcp serve`，地址为 `127.0.0.1:9095`，端点包括 `/`、`/api/v1/...`、`/mcp` 和 `/healthz`。
 
 ## 按需阅读 `.specs/`
 不要每次读取全部文档：架构读 `architecture.md`；安全、Policy、确认、Secret 读 `safety.md`；配置读 `config.md`；数据库读 `database.md` + `safety.md`；Linux/Kubernetes 读各自文档 + `safety.md`；MCP 读 `mcp.md` + `safety.md`；日志/Audit/Metrics 读 `audit-observability.md`；React 读 `frontend.md`；REST 读 `api.md`；测试读 `testing.md`；版本边界读 `roadmap.md`。涉及 SQL、Linux/K8s 修改、Policy、确认或 Secret 时必须读 `safety.md`。

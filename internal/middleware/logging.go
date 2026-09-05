@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
 	"log/slog"
 	"time"
 

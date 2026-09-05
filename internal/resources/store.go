@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
-	"github.com/gcc798/ai-ops-gateway/internal/storage"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/storage"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -19,14 +19,14 @@ type Paths struct{ Logs, Data string }
 
 func ResolvePaths() Paths {
 	base, _ := os.UserHomeDir()
-	root := filepath.Join(base, ".ai-ops-gateway")
+	root := filepath.Join(base, ".ops-gateway-mcp")
 	value := func(key, fallback string) string {
 		if v := os.Getenv(key); v != "" {
 			return v
 		}
 		return fallback
 	}
-	return Paths{Logs: value("AI_OPS_GATEWAY_LOGS", filepath.Join(root, "logs")), Data: value("AI_OPS_GATEWAY_DATA", filepath.Join(root, "data"))}
+	return Paths{Logs: value("OPS_GATEWAY_MCP_LOGS", filepath.Join(root, "logs")), Data: value("OPS_GATEWAY_MCP_DATA", filepath.Join(root, "data"))}
 }
 func (p Paths) Ensure() error {
 	for _, path := range []string{p.Data, p.Logs} {
@@ -74,7 +74,24 @@ type Filter struct {
 	Address     string `json:"address,omitempty" db:"address"`
 	User        string `json:"user,omitempty" db:"user"`
 	Context     string `json:"context,omitempty" db:"context"`
+	Sort        string `json:"sort,omitempty"`
+	Order       string `json:"order,omitempty"`
 }
+
+func (f Filter) SortClause(kind string) (string, error) {
+	if f.Sort == "" {
+		f.Sort = "name"
+	}
+	if f.Order == "" {
+		f.Order = "asc"
+	}
+	allowed := f.Sort == "name" || f.Sort == "environment" || (kind == "database" && f.Sort == "driver") || (kind == "linux" && (f.Sort == "address" || f.Sort == "user")) || (kind == "kubernetes" && f.Sort == "context")
+	if !allowed || (f.Order != "asc" && f.Order != "desc") {
+		return "", fmt.Errorf("invalid resource sort")
+	}
+	return f.Sort + " " + f.Order + ", name ASC", nil
+}
+
 type Store struct {
 	db       *sqlx.DB
 	mu       sync.Mutex
@@ -138,6 +155,10 @@ func (s *Store) List(ctx context.Context, kind string, f Filter) (pagination.Res
 	if err != nil {
 		return result, err
 	}
+	order, err := f.SortClause(kind)
+	if err != nil {
+		return result, err
+	}
 	where, args := " WHERE 1=1", []any{}
 	for _, field := range []struct {
 		col, value string
@@ -164,7 +185,7 @@ func (s *Store) List(ctx context.Context, kind string, f Filter) (pagination.Res
 	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM `+tbl+where, args...).Scan(&result.Total); err != nil {
 		return result, err
 	}
-	err = tx.SelectContext(ctx, &result.Items, `SELECT `+columns[kind]+` FROM `+tbl+where+` ORDER BY name LIMIT ? OFFSET ?`, append(args, f.PageSize, f.Offset())...)
+	err = tx.SelectContext(ctx, &result.Items, `SELECT `+columns[kind]+` FROM `+tbl+where+` ORDER BY `+order+` LIMIT ? OFFSET ?`, append(args, f.PageSize, f.Offset())...)
 	if err != nil {
 		return result, err
 	}

@@ -3,7 +3,7 @@ package audit
 import (
 	"context"
 	"fmt"
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,6 +16,10 @@ func TestSearchBeyondFiftyAndCombinedFilters(t *testing.T) {
 	}
 	defer s.Close()
 	ctx := context.Background()
+	emptyOptions, err := s.FilterOptions(ctx)
+	if err != nil || emptyOptions.Tools == nil || emptyOptions.Clients == nil {
+		t.Fatalf("empty options: %+v %v", emptyOptions, err)
+	}
 	start := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 	for i := 0; i < 75; i++ {
 		kind, tool := "database", "db_query"
@@ -35,6 +39,10 @@ func TestSearchBeyondFiftyAndCombinedFilters(t *testing.T) {
 		t.Fatalf("filters: %+v %v", out, err)
 	}
 	summary, err := s.Summary(ctx)
+	options, optionsErr := s.FilterOptions(ctx)
+	if optionsErr != nil || len(options.Tools) != 2 || options.Tools[0] != "db_query" || options.Tools[1] != "linux_read_file" || len(options.Clients) != 0 {
+		t.Fatalf("distinct options: %+v %v", options, optionsErr)
+	}
 	if err != nil || summary.Total != 75 || summary.Allow != 75 {
 		t.Fatalf("summary: %+v %v", summary, err)
 	}

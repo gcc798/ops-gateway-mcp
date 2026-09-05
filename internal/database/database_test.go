@@ -14,7 +14,7 @@ func TestOpenRejectsInvalidConfig(t *testing.T) {
 }
 
 func TestIntegration(t *testing.T) {
-	for _, test := range []struct{ name, driver, env string }{{"postgres", "postgres", "AI_OPS_GATEWAY_PG_DSN"}, {"mysql", "mysql", "AI_OPS_GATEWAY_MYSQL_DSN"}} {
+	for _, test := range []struct{ name, driver, env string }{{"postgres", "postgres", "OPS_GATEWAY_MCP_PG_DSN"}, {"mysql", "mysql", "OPS_GATEWAY_MCP_MYSQL_DSN"}} {
 		t.Run(test.name, func(t *testing.T) {
 			dsn := os.Getenv(test.env)
 			if dsn == "" {

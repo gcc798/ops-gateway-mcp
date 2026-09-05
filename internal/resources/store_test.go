@@ -3,10 +3,31 @@ package resources
 import (
 	"context"
 	"fmt"
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
 )
+
+func TestResolvePaths(t *testing.T) {
+	t.Setenv("OPS_GATEWAY_MCP_DATA", "")
+	t.Setenv("OPS_GATEWAY_MCP_LOGS", "")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Paths{Data: filepath.Join(home, ".ops-gateway-mcp", "data"), Logs: filepath.Join(home, ".ops-gateway-mcp", "logs")}
+	if got := ResolvePaths(); got != want {
+		t.Fatalf("paths: %+v, want %+v", got, want)
+	}
+	want = Paths{Data: filepath.Join(t.TempDir(), "data"), Logs: filepath.Join(t.TempDir(), "logs")}
+	t.Setenv("OPS_GATEWAY_MCP_DATA", want.Data)
+	t.Setenv("OPS_GATEWAY_MCP_LOGS", want.Logs)
+	if got := ResolvePaths(); got != want {
+		t.Fatalf("paths: %+v, want %+v", got, want)
+	}
+}
 
 func TestResourceQueries(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "gateway.db")
@@ -25,6 +46,15 @@ func TestResourceQueries(t *testing.T) {
 	page, err := s.List(ctx, "database", Filter{Query: pagination.Query{Page: 3, PageSize: 20}, Environment: "dev", Driver: "mysql", Name: "db-"})
 	if err != nil || page.Total != 65 || len(page.Items) != 20 || page.Items[0].Name != "db-40" {
 		t.Fatalf("page: %+v %v", page, err)
+	}
+	sorted, err := s.List(ctx, "database", Filter{Sort: "name", Order: "desc"})
+	if err != nil || sorted.Items[0].Name != "db-64" {
+		t.Fatalf("sort: %+v %v", sorted, err)
+	}
+	for _, f := range []Filter{{Sort: "dsn"}, {Sort: "name; DROP TABLE database_resources"}, {Order: "DESC;--"}, {Sort: "address"}} {
+		if _, err := s.List(ctx, "database", f); err == nil {
+			t.Fatal("accepted invalid sort")
+		}
 	}
 	empty, err := s.List(ctx, "database", Filter{Name: "%' OR 1=1 --"})
 	if err != nil || empty.Total != 0 || empty.Items == nil {

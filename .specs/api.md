@@ -12,7 +12,7 @@ Linux 另有 system-info、disk/memory usage、processes、service status/logs�
 
 Handler 只负责参数、Validate、调用 Application Service、返回响应；不得直接写 SQL、SSH、client-go 或 Policy 判断。错误逐步统一为 `{code,message,requestId}`，不回传堆栈和 Secret；列表接口应支持分页。
 
-配置资源列表（REST 和 MCP）统一后端分页：page 默认 1，page_size 默认 20、范围 1–100，page 最大 1000000；非法值返回 400。响应为 `{items:[],total,page,page_size}`，按名称排序。空结果的 items 始终为数组，不返回 null。
+配置资源列表（REST 和 MCP）统一后端分页：page 默认 1，page_size 默认 20、范围 1–100，page 最大 1000000；非法值返回 400。响应为 `{items:[],total,page,page_size}`，默认按名称升序排序。REST 资源列表可指定 sort（name/environment，数据库另有 driver，Linux 另有 address/user，K8s 另有 context）与 order（asc/desc）；只接受白名单，非法值返回 400，同值以 name 升序稳定排序。空结果的 items 始终为数组，不返回 null。
 
 - GET /api/v1/databases：name 包含匹配、environment 精确匹配、driver 精确匹配。
 - GET /api/v1/linux/hosts：name、address、user 包含匹配，environment 精确匹配。
@@ -24,3 +24,5 @@ GET /api/v1/audit/operations 使用相同分页结构，支持 from/to（RFC3339
 GET /api/v1/audit/operations/:id 返回审计详情；pending 操作附 expires_at，SQL pending 附冻结 statement 明文。POST /api/v1/operations/:id/confirm 是 Web 使用的统一执行端点；沿用 REST scope。MCP 不提供确认入口。
 
 此处分页针对配置资源和 Audit；远端 tables、pods、services 等现有只读接口契约保持不变。
+
+GET /api/v1/audit/filter-options 返回 `{tools:[],clients:[]}`，从全部审计记录中去重、排除空字符串并按字典序排序。clients 为历史 Token 身份名称（包括已停用身份），不返回 Token 原文。端点要求 REST 认证，响应 Cache-Control: no-store；不受当前筛选或分页限制。

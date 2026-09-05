@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
 )
 
 type Filter struct {
@@ -19,6 +19,27 @@ type Summary struct {
 	Confirm int `json:"confirm"`
 	Deny    int `json:"deny"`
 	Failed  int `json:"failed"`
+}
+
+type FilterOptions struct {
+	Tools   []string `json:"tools"`
+	Clients []string `json:"clients"`
+}
+
+func (s *Store) FilterOptions(ctx context.Context) (FilterOptions, error) {
+	out := FilterOptions{Tools: []string{}, Clients: []string{}}
+	tx, err := s.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return out, err
+	}
+	defer tx.Rollback()
+	if err := tx.SelectContext(ctx, &out.Tools, "SELECT DISTINCT tool FROM operations WHERE tool <> '' ORDER BY tool"); err != nil {
+		return out, err
+	}
+	if err := tx.SelectContext(ctx, &out.Clients, "SELECT DISTINCT client FROM operations WHERE client <> '' ORDER BY client"); err != nil {
+		return out, err
+	}
+	return out, tx.Commit()
 }
 
 func (s *Store) Search(ctx context.Context, f Filter) (pagination.Result[Operation], error) {

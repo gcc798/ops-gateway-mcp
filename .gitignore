@@ -1,8 +1,11 @@
 bin/
-ai-ops-gateway
+/ops-gateway-mcp
+/cmd/ops-gateway-mcp/web/dist/
 web/node_modules/
 web/dist/
 .DS_Store
 *.db
 .idea/
 .playwright-cli/
+
+output/playwright/

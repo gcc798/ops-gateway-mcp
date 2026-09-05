@@ -14,7 +14,7 @@ func TestDailyWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer w.Close()
-	b, err := os.ReadFile(filepath.Join(dir, "ai-ops-gateway-"+time.Now().Format(time.DateOnly)+".log"))
+	b, err := os.ReadFile(filepath.Join(dir, "ops-gateway-mcp-"+time.Now().Format(time.DateOnly)+".log"))
 	if err != nil || string(b) != "ok\n" {
 		t.Fatalf("content=%q err=%v", b, err)
 	}

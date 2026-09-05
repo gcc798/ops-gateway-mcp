@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/audit"
-	"github.com/gcc798/ai-ops-gateway/internal/pagination"
+	"github.com/gcc798/ops-gateway-mcp/internal/audit"
+	"github.com/gcc798/ops-gateway-mcp/internal/pagination"
 	"github.com/labstack/echo/v5"
 )
 
@@ -16,6 +16,19 @@ func (h *AuditHandler) Register(g *echo.Group) {
 	g.GET("/operations", h.list)
 	g.GET("/operations/:id", h.get)
 	g.GET("/summary", h.summary)
+	g.GET("/filter-options", h.filterOptions)
+}
+
+func (h *AuditHandler) filterOptions(c *echo.Context) error {
+	if h.D.Audits == nil {
+		return c.JSON(503, errorBody("AUDIT_UNAVAILABLE", "audit store unavailable"))
+	}
+	value, err := h.D.Audits.FilterOptions(c.Request().Context())
+	if err != nil {
+		return c.JSON(500, errorBody("AUDIT_READ_FAILED", "unable to read audit filter options"))
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.JSON(200, value)
 }
 func (h *AuditHandler) list(c *echo.Context) error {
 	q, err := pagination.Parse(c.QueryParams())

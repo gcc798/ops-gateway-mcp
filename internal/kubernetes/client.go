@@ -149,7 +149,7 @@ func (c *Client) Deployment(ctx context.Context, namespace, name string) (appsv1
 	return *deployment, nil
 }
 func (c *Client) RolloutRestart(ctx context.Context, namespace, name string) error {
-	patch, _ := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"metadata": map[string]any{"annotations": map[string]string{"ai-ops-gateway/restartedAt": time.Now().UTC().Format(time.RFC3339Nano)}}}}})
+	patch, _ := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"metadata": map[string]any{"annotations": map[string]string{"ops-gateway-mcp/restartedAt": time.Now().UTC().Format(time.RFC3339Nano)}}}}})
 	if _, err := c.client.AppsV1().Deployments(namespace).Patch(ctx, name, types.StrategicMergePatchType, patch, metav1.PatchOptions{}); err != nil {
 		return fmt.Errorf("restart deployment: %w", err)
 	}

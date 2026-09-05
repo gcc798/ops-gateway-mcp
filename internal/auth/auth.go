@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gcc798/ai-ops-gateway/internal/storage"
+	"github.com/gcc798/ops-gateway-mcp/internal/storage"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -85,7 +85,7 @@ func (s *Store) HTTP(next http.Handler, scope string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name, ok := s.Authenticate(r.Context(), Bearer(r.Header.Get("Authorization")), scope)
 		if !ok {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="ai-ops-gateway"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="ops-gateway-mcp"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

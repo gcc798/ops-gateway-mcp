@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gcc798/ai-ops-gateway/internal/auth"
-	"github.com/gcc798/ai-ops-gateway/internal/database"
-	kube "github.com/gcc798/ai-ops-gateway/internal/kubernetes"
-	linux "github.com/gcc798/ai-ops-gateway/internal/linux"
-	"github.com/gcc798/ai-ops-gateway/internal/resources"
+	"github.com/gcc798/ops-gateway-mcp/internal/auth"
+	"github.com/gcc798/ops-gateway-mcp/internal/database"
+	kube "github.com/gcc798/ops-gateway-mcp/internal/kubernetes"
+	linux "github.com/gcc798/ops-gateway-mcp/internal/linux"
+	"github.com/gcc798/ops-gateway-mcp/internal/resources"
 )
 
 func TestReadRoutes(t *testing.T) {
